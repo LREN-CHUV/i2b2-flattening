@@ -12,5 +12,6 @@ where:
   * 'i2b2_url' is the URL of the I2B2 database
   * 'output_file' is the path to the CSV output file
   * '--dataset_prefix' (optional) is a dataset prefix used on the concept_cd
+  * '--volumes_list' (optional) is a file containing the list of brain regions volumes to extract
 
 Example: `./main.py postgresql://postgres:postgres@localhost:5432/postgres /home/mirco/Bureau/test.csv --dataset_prefix='clm:'`
