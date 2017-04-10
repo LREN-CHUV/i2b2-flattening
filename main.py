@@ -13,21 +13,21 @@ def main(i2b2_url, output_file):
 
     i2b2_conn = i2b2_connection.Connection(i2b2_url)
 
-    headers = []
-    scans = []
-    subjects = []
+    headers = list()
+    headers.append('subject_code')
 
-    for results in i2b2_conn.db_session.query(
-            i2b2_conn.ConceptDimension.concept_cd):
-        headers.append(results[0])
+    for results in i2b2_conn.db_session.query(i2b2_conn.ConceptDimension.concept_cd):
+        feature = results[0][4:]
+        if feature[-6:] != '_names':
+            headers.append(feature)
 
-    for results in i2b2_conn.db_session.query(
-            i2b2_conn.EncounterMapping.encounter_ide,
-            i2b2_conn.EncounterMapping.patient_ide):
-        scans.append(results[0])
-        subjects.append(results[1])
+    df = DataFrame(columns=headers)
 
-    df = DataFrame({'subject_code': subjects, 'scan_code': scans})
+    subjects = list()
+    for results in i2b2_conn.db_session.query(i2b2_conn.PatientMapping.patient_ide):
+        subjects.append(results[0])
+
+    df['subject_code'] = subjects
 
     i2b2_conn.close()
 
