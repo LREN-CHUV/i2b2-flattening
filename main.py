@@ -6,6 +6,8 @@ from pandas import DataFrame
 
 import i2b2_connection
 
+SUBJECT_CODE_COLUMN = 'subject_code'
+
 
 def get_volume(i2b2_conn, region, subject, dataset_prefix=''):
     region = dataset_prefix + region
@@ -22,7 +24,7 @@ def main(i2b2_url, output_file, dataset_prefix=''):
     i2b2_conn = i2b2_connection.Connection(i2b2_url)
 
     headers = list()
-    headers.append('subject_code')
+    headers.append(SUBJECT_CODE_COLUMN)
 
     for results in i2b2_conn.db_session.query(i2b2_conn.ConceptDimension.concept_cd):
         feature = results[0][4:]
@@ -35,11 +37,11 @@ def main(i2b2_url, output_file, dataset_prefix=''):
     for results in i2b2_conn.db_session.query(i2b2_conn.PatientMapping.patient_ide):
         subjects.append(results[0])
 
-    df['subject_code'] = subjects
+    df[SUBJECT_CODE_COLUMN] = subjects
 
     for index, row in df.iterrows():
         for h in headers[1:]:
-            df.loc[index, h] = get_volume(i2b2_conn, h, row['subject_code'], dataset_prefix)
+            df.loc[index, h] = get_volume(i2b2_conn, h, row[SUBJECT_CODE_COLUMN], dataset_prefix)
 
     i2b2_conn.close()
 
