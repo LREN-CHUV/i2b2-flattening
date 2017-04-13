@@ -1,11 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy import orm
-from sqlalchemy.sql import functions as sql_func
-
-from datetime import datetime
-
-from airflow import configuration
 
 
 class Connection:
