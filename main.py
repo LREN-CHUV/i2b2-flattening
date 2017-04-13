@@ -11,11 +11,25 @@ DEFAULT_VOLUMES_LIST = './data/default_volumes_list'
 VOLUMES_POSTFIX = "_volume(cm3)"
 
 
+def get_baseline(query_results):
+    try:
+        # TODO: compare exam dates and/or patient age at visit time to return the baseline value
+        return query_results[0]
+    except IndexError:
+        return None
+
+
 def get_volume(i2b2_conn, concept_cd, subject):
     patient_num = i2b2_conn.db_session.query(i2b2_conn.PatientMapping.patient_num).filter_by(
         patient_ide=subject).first()
-    return float(i2b2_conn.db_session.query(i2b2_conn.ObservationFact.nval_num).filter_by(
-        concept_cd=concept_cd, patient_num=patient_num).first()[0])
+    all_values = i2b2_conn.db_session.query(
+        i2b2_conn.ObservationFact.nval_num, i2b2_conn.ObservationFact.encounter_num).\
+        filter_by(concept_cd=concept_cd, patient_num=patient_num).all()
+    value = get_baseline(all_values)
+    try:
+        return float(value[0])
+    except (IndexError, TypeError):
+        return None
 
 
 def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None):
