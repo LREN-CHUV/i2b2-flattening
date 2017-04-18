@@ -3,22 +3,32 @@
 import logging
 import argparse
 from pandas import DataFrame
+from math import fabs
 
 import i2b2_connection
 
+
+######################################################################################################################
+# CONSTANTS
+######################################################################################################################
 
 SUBJECT_CODE_COLUMN = 'subject_code'
 DEFAULT_VOLUMES_LIST = './data/default_volumes_list'
 VOLUMES_POSTFIX = "_volume(cm3)"
 
-DIAG_CD = "diag_category"
-
 AGE_COL_NAME = "age"
 SEX_COL_NAME = "sex"
 DIAG_COL_NAME = "diag_category"
 
+DIAG_CD = "diag_category"
 MRI_TEST_CONCEPT = "protocol_name"
 
+DIAG_CAT_TIMEFRAME_YEAR = 1
+
+
+######################################################################################################################
+# FUNCTIONS
+######################################################################################################################
 
 def get_baseline_visit_with_features(i2b2_conn, subject, mri_test_concept):
     patient_num = i2b2_conn.db_session.query(i2b2_conn.PatientMapping.patient_num). \
@@ -63,12 +73,24 @@ def get_age(i2b2_conn, encounter_num):
         return None
 
 
-def get_diag(i2b2_conn, encounter_num, dataset_prefix):
-    try:
-        return str(i2b2_conn.db_session.query(i2b2_conn.ObservationFact.nval_num).
-                   filter_by(concept_cd=dataset_prefix+DIAG_CD, encounter_num=encounter_num).one_or_none()[0])
-    except TypeError:
+def get_diag(i2b2_conn, dataset_prefix, subject, mri_age, time_frame=None):
+    if not mri_age:
         return None
+    concept_cd = dataset_prefix+DIAG_CD
+    patient_num = int(i2b2_conn.db_session.query(i2b2_conn.PatientMapping.patient_num).
+                      filter_by(patient_ide=subject).first()[0])
+    tuples = i2b2_conn.db_session.query(i2b2_conn.ObservationFact.tval_char, i2b2_conn.ObservationFact.encounter_num).\
+        filter_by(patient_num=patient_num, concept_cd=concept_cd).all()
+    value = None
+    delta = None
+    for t in tuples:
+        encounter_num = int(t[1])
+        age = float(i2b2_conn.db_session.query(i2b2_conn.VisitDimension.patient_age).
+                    filter_by(encounter_num=encounter_num).one_or_none()[0])
+        if age and (not delta or fabs(mri_age - age) < delta):
+            delta = fabs(mri_age - age)
+            value = str(t[0])
+    return value
 
 
 def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None):
@@ -119,9 +141,10 @@ def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None):
         subject = row[SUBJECT_CODE_COLUMN]
         logging.info("Filling row for %s" % subject)
         encounter_num = get_baseline_visit_with_features(i2b2_conn, subject, mri_test_concept)
+        age = get_age(i2b2_conn, encounter_num)
         df.loc[index, SEX_COL_NAME] = get_sex(i2b2_conn, subject)
-        df.loc[index, AGE_COL_NAME] = get_age(i2b2_conn, encounter_num)
-        df.loc[index, DIAG_COL_NAME] = get_diag(i2b2_conn, encounter_num, dataset_prefix)
+        df.loc[index, AGE_COL_NAME] = age
+        df.loc[index, DIAG_COL_NAME] = get_diag(i2b2_conn, dataset_prefix, subject, age, DIAG_CAT_TIMEFRAME_YEAR)
         for h in headers[len(extra_vars):]:
             df.loc[index, h] = get_volume_at_baseline(i2b2_conn, concept_dict[h], encounter_num)
 
@@ -133,6 +156,10 @@ def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None):
 
     logging.info("DONE")
 
+
+######################################################################################################################
+# ENTRY POINT
+######################################################################################################################
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
