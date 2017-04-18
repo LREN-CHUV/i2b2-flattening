@@ -88,8 +88,10 @@ def get_diag(i2b2_conn, dataset_prefix, subject, mri_age, time_frame=None):
         age = float(i2b2_conn.db_session.query(i2b2_conn.VisitDimension.patient_age).
                     filter_by(encounter_num=encounter_num).one_or_none()[0])
         if age and (not delta or fabs(mri_age - age) < delta):
-            delta = fabs(mri_age - age)
-            value = str(t[0])
+            new_delta = fabs(mri_age - age)
+            if new_delta < time_frame/2:
+                delta = new_delta
+                value = str(t[0])
     return value
 
 
