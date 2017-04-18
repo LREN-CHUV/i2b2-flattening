@@ -17,13 +17,24 @@ AGE_COL_NAME = "age"
 SEX_COL_NAME = "sex"
 DIAG_COL_NAME = "diag_category"
 
+MRI_TEST_CONCEPT = "protocol_name"
 
-def get_baseline_visit(i2b2_conn, subject):
-    patient_num = i2b2_conn.db_session.query(i2b2_conn.PatientMapping.patient_num).filter_by(
-        patient_ide=subject).first()
-    return i2b2_conn.db_session.query(i2b2_conn.VisitDimension.encounter_num). \
-        filter_by(patient_num=patient_num).\
-        order_by(i2b2_conn.VisitDimension.patient_age).first()
+
+def get_baseline_visit_with_features(i2b2_conn, subject, mri_test_concept):
+    patient_num = i2b2_conn.db_session.query(i2b2_conn.PatientMapping.patient_num). \
+        filter_by(patient_ide=subject).first()
+    visits = [int(v[0]) for v in
+              i2b2_conn.db_session.query(i2b2_conn.ObservationFact.encounter_num).filter_by(
+                  patient_num=patient_num, concept_cd=mri_test_concept).distinct().all()]
+    visit_bl = None
+    age_bl = None
+    for visit in visits:
+        age = i2b2_conn.db_session.query(i2b2_conn.VisitDimension.patient_age).\
+            filter_by(encounter_num=visit).one_or_none()
+        if not age_bl or age < age_bl:
+            age_bl = age
+            visit_bl = visit
+    return visit_bl
 
 
 def get_sex(i2b2_conn, subject):
@@ -103,10 +114,11 @@ def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None):
     df[SUBJECT_CODE_COLUMN] = subjects
 
     logging.info("Filling table with data...")
+    mri_test_concept = dataset_prefix + MRI_TEST_CONCEPT
     for index, row in df.iterrows():
         subject = row[SUBJECT_CODE_COLUMN]
         logging.info("Filling row for %s" % subject)
-        encounter_num = get_baseline_visit(i2b2_conn, subject)
+        encounter_num = get_baseline_visit_with_features(i2b2_conn, subject, mri_test_concept)
         df.loc[index, SEX_COL_NAME] = get_sex(i2b2_conn, subject)
         df.loc[index, AGE_COL_NAME] = get_age(i2b2_conn, encounter_num)
         df.loc[index, DIAG_COL_NAME] = get_diag(i2b2_conn, encounter_num, dataset_prefix)
