@@ -6,30 +6,50 @@ from pandas import DataFrame
 
 import i2b2_connection
 
+
 SUBJECT_CODE_COLUMN = 'subject_code'
 DEFAULT_VOLUMES_LIST = './data/default_volumes_list'
 VOLUMES_POSTFIX = "_volume(cm3)"
 
+DIAG_CD = "diag_category"
 
-def get_baseline(query_results):
-    try:
-        # TODO: compare exam dates and/or patient age at visit time to return the baseline value
-        return query_results[0]
-    except IndexError:
-        return None
+AGE_COL_NAME = "age"
+SEX_COL_NAME = "sex"
+DIAG_COL_NAME = "diag_category"
 
 
-def get_volume(i2b2_conn, concept_cd, subject):
+def get_baseline_visit(i2b2_conn, subject):
     patient_num = i2b2_conn.db_session.query(i2b2_conn.PatientMapping.patient_num).filter_by(
         patient_ide=subject).first()
-    all_values = i2b2_conn.db_session.query(
-        i2b2_conn.ObservationFact.nval_num, i2b2_conn.ObservationFact.encounter_num).\
-        filter_by(concept_cd=concept_cd, patient_num=patient_num).all()
-    value = get_baseline(all_values)
+    return i2b2_conn.db_session.query(i2b2_conn.VisitDimension.encounter_num). \
+        filter_by(patient_num=patient_num).\
+        order_by(i2b2_conn.VisitDimension.patient_age).first()
+
+
+def get_sex(i2b2_conn, subject):
+    patient_num = i2b2_conn.db_session.query(i2b2_conn.PatientMapping.patient_num).\
+        filter_by(patient_ide=subject).first()
+    return i2b2_conn.db_session.query(i2b2_conn.PatientDimension.sex_cd).\
+        filter_by(patient_num=patient_num).one_or_none()
+
+
+def get_volume_at_baseline(i2b2_conn, concept_cd, encounter_num):
+    value = i2b2_conn.db_session.query(i2b2_conn.ObservationFact.nval_num).\
+        filter_by(concept_cd=concept_cd, encounter_num=encounter_num).one_or_none()
     try:
-        return float(value[0])
-    except (IndexError, TypeError):
+        return float(value)
+    except TypeError:
         return None
+
+
+def get_age(i2b2_conn, encounter_num):
+    return i2b2_conn.db_session.query(i2b2_conn.VisitDimension.patient_age).\
+        filter_by(encounter_num=encounter_num).one_or_none()
+
+
+def get_diag(i2b2_conn, encounter_num, dataset_prefix):
+    return i2b2_conn.db_session.query(i2b2_conn.ObservationFact.nval_num).\
+        filter_by(concept_cd=dataset_prefix+DIAG_CD, encounter_num=encounter_num).one_or_none()
 
 
 def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None):
@@ -47,9 +67,16 @@ def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None):
     i2b2_conn = i2b2_connection.Connection(i2b2_url)
 
     headers = list()
-    headers.append(SUBJECT_CODE_COLUMN)
 
-    logging.info("Generating columns (one by brain region)...")
+    logging.info("Generating extra_vars columns (demographics, diag, etc)...")
+    extra_vars = list()
+    extra_vars.append(SUBJECT_CODE_COLUMN)
+    extra_vars.append(AGE_COL_NAME)
+    extra_vars.append(SEX_COL_NAME)
+    extra_vars.append(DIAG_COL_NAME)
+    headers.extend(extra_vars)
+
+    logging.info("Generating main columns (one by brain region)...")
     concept_dict = dict()
     for vol in volumes_list:
         concept_cd = dataset_prefix + vol.lower().replace(' ', '_') + VOLUMES_POSTFIX
@@ -67,8 +94,12 @@ def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None):
     for index, row in df.iterrows():
         subject = row[SUBJECT_CODE_COLUMN]
         logging.info("Filling row for %s" % subject)
-        for h in headers[1:]:
-            df.loc[index, h] = get_volume(i2b2_conn, concept_dict[h], subject)
+        encounter_num = get_baseline_visit(i2b2_conn, subject)
+        df.loc[index, SEX_COL_NAME] = get_sex(i2b2_conn, subject)
+        df.loc[index, AGE_COL_NAME] = get_age(i2b2_conn, encounter_num)
+        df.loc[index, DIAG_COL_NAME] = get_diag(i2b2_conn, encounter_num, dataset_prefix)
+        for h in headers[len(extra_vars):]:
+            df.loc[index, h] = get_volume_at_baseline(i2b2_conn, concept_dict[h], encounter_num)
 
     i2b2_conn.close()
     logging.info("I2B2 database connection closed")
