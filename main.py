@@ -27,29 +27,37 @@ def get_baseline_visit(i2b2_conn, subject):
 
 
 def get_sex(i2b2_conn, subject):
-    patient_num = i2b2_conn.db_session.query(i2b2_conn.PatientMapping.patient_num).\
-        filter_by(patient_ide=subject).first()
-    return i2b2_conn.db_session.query(i2b2_conn.PatientDimension.sex_cd).\
-        filter_by(patient_num=patient_num).one_or_none()
+    try:
+        patient_num = i2b2_conn.db_session.query(i2b2_conn.PatientMapping.patient_num).\
+            filter_by(patient_ide=subject).first()
+        return str(i2b2_conn.db_session.query(i2b2_conn.PatientDimension.sex_cd).
+                   filter_by(patient_num=patient_num).one_or_none()[0])
+    except TypeError:
+        return None
 
 
 def get_volume_at_baseline(i2b2_conn, concept_cd, encounter_num):
-    value = i2b2_conn.db_session.query(i2b2_conn.ObservationFact.nval_num).\
-        filter_by(concept_cd=concept_cd, encounter_num=encounter_num).one_or_none()
     try:
-        return float(value)
+        return float(i2b2_conn.db_session.query(i2b2_conn.ObservationFact.nval_num).
+                     filter_by(concept_cd=concept_cd, encounter_num=encounter_num).one_or_none()[0])
     except TypeError:
         return None
 
 
 def get_age(i2b2_conn, encounter_num):
-    return i2b2_conn.db_session.query(i2b2_conn.VisitDimension.patient_age).\
-        filter_by(encounter_num=encounter_num).one_or_none()
+    try:
+        return float(i2b2_conn.db_session.query(i2b2_conn.VisitDimension.patient_age).
+                     filter_by(encounter_num=encounter_num).one_or_none()[0])
+    except TypeError:
+        return None
 
 
 def get_diag(i2b2_conn, encounter_num, dataset_prefix):
-    return i2b2_conn.db_session.query(i2b2_conn.ObservationFact.nval_num).\
-        filter_by(concept_cd=dataset_prefix+DIAG_CD, encounter_num=encounter_num).one_or_none()
+    try:
+        return str(i2b2_conn.db_session.query(i2b2_conn.ObservationFact.nval_num).
+                   filter_by(concept_cd=dataset_prefix+DIAG_CD, encounter_num=encounter_num).one_or_none()[0])
+    except TypeError:
+        return None
 
 
 def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None):
@@ -80,8 +88,12 @@ def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None):
     concept_dict = dict()
     for vol in volumes_list:
         concept_cd = dataset_prefix + vol.lower().replace(' ', '_') + VOLUMES_POSTFIX
-        concept_name = i2b2_conn.db_session.query(i2b2_conn.ConceptDimension.name_char).filter_by(
-            concept_cd=concept_cd).first()[0]
+        try:
+            concept_name = i2b2_conn.db_session.query(i2b2_conn.ConceptDimension.name_char).filter_by(
+                concept_cd=concept_cd).first()[0]
+        except TypeError:
+            logging.warning("Cannot find name_char for %s" % concept_cd)
+            concept_name = concept_cd
         headers.append(concept_name)
         concept_dict[concept_name] = concept_cd
     df = DataFrame(columns=headers)
