@@ -9,12 +9,8 @@ This is a tool to generate a flat CSV file containing brain features read from a
 
 ## Usage
 
-main.py [-h] [--dataset_prefix DATASET_PREFIX] i2b2_url output_file
-
-where:
-  * 'i2b2_url' is the URL of the I2B2 database
-  * 'output_file' is the path to the CSV output file
-  * '--dataset_prefix' (optional) is a dataset prefix used on the concept_cd
-  * '--volumes_list' (optional) is a file containing the list of brain regions volumes to extract
-
-Example: `./main.py postgresql://postgres:postgres@localhost:5432/postgres /home/mirco/Bureau/test.csv --dataset_prefix='clm:'`
+Run: `docker run --rm -v <output_folder>:/output_folder hbpmip/i2b2-flattening <db_url>
+--dataset_prefix <dataset_prefix>
+--output_file <output_file>
+--volumes_list <volumes_list>
+--scores_list <scores_list>`
