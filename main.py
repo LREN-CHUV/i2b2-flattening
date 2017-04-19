@@ -23,7 +23,7 @@ DIAG_COL_NAME = "diag_category"
 DIAG_CD = "diag_category"
 MRI_TEST_CONCEPT = "protocol_name"
 
-DIAG_CAT_TIMEFRAME_YEAR = 1
+DIAG_CAT_TIMEFRAME_YEAR = 10
 
 
 ######################################################################################################################
