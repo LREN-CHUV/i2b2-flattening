@@ -1,0 +1,7 @@
+i2b2-flattening:
+  build: Dockerfile
+  image: hbpmip/i2b2-flattening
+  pre:
+    - echo "Building hbpmip/i2b2-flattening image"
+  post:
+    - echo "Finished building hbpmip/i2b2-flattening image"

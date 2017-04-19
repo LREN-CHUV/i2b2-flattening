@@ -1,3 +1,6 @@
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/LREN-CHUV/i2b2-flattening/blob/master/LICENSE)
+[![CHUV](https://img.shields.io/badge/CHUV-LREN-AF4C64.svg)](https://www.unil.ch/lren/en/home.html)
+
 # I2B2 to Flat CSV
 
 ## Introduction

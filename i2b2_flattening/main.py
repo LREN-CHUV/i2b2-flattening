@@ -1,12 +1,17 @@
 #!/usr/bin/env python3.5
 
-import logging
 import argparse
-from pandas import DataFrame
+import logging
+import os
+import sys
 from math import fabs
 
-import i2b2_connection
+PACKAGE_PARENT = '..'
+SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
+sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 
+from i2b2_flattening import i2b2_connection
+from pandas import DataFrame
 
 ######################################################################################################################
 # CONSTANTS
@@ -78,7 +83,7 @@ def get_age(i2b2_conn, encounter_num):
 def get_diag(i2b2_conn, dataset_prefix, subject, mri_age, time_frame=None):
     if not mri_age:
         return None
-    concept_cd = dataset_prefix+DIAG_CD
+    concept_cd = dataset_prefix + DIAG_CD
     patient_num = int(i2b2_conn.db_session.query(i2b2_conn.PatientMapping.patient_num).
                       filter_by(patient_ide=subject).first()[0])
     tuples = i2b2_conn.db_session.query(i2b2_conn.ObservationFact.tval_char, i2b2_conn.ObservationFact.encounter_num).\
@@ -91,7 +96,7 @@ def get_diag(i2b2_conn, dataset_prefix, subject, mri_age, time_frame=None):
                     filter_by(encounter_num=encounter_num).one_or_none()[0])
         if age and (not delta or fabs(mri_age - age) < delta):
             new_delta = fabs(mri_age - age)
-            if new_delta < time_frame/2:
+            if new_delta < time_frame / 2:
                 delta = new_delta
                 value = str(t[0])
     return value
@@ -113,7 +118,7 @@ def get_score(i2b2_conn, concept_cd, dataset_prefix, subject, mri_age, time_fram
                     filter_by(encounter_num=encounter_num).one_or_none()[0])
         if age and (not delta or fabs(mri_age - age) < delta):
             new_delta = fabs(mri_age - age)
-            if new_delta < time_frame/2:
+            if new_delta < time_frame / 2:
                 delta = new_delta
                 value = float(t[0])
     return value
@@ -219,11 +224,14 @@ def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None, score
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     args_parser = argparse.ArgumentParser()
+    args_parser.add_argument("output_folder")
     args_parser.add_argument("i2b2_url")
-    args_parser.add_argument("output_file")
     args_parser.add_argument("--dataset_prefix")
+    args_parser.add_argument("--output_file", default='flattening.csv')
     args_parser.add_argument("--volumes_list")
     args_parser.add_argument("--scores_list")
     args = args_parser.parse_args()
-    main(args.i2b2_url, args.output_file,
+
+    output_path = os.path.join(args.output_folder, args.output_file)
+    main(args.i2b2_url, output_path,
          dataset_prefix=args.dataset_prefix, volumes_list_path=args.volumes_list, scores_list_path=args.scores_list)
