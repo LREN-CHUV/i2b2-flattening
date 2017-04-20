@@ -10,8 +10,10 @@ This is a tool to generate a flat CSV file containing brain features read from a
 
 ## Usage
 
-Run: `docker run --rm -v <output_folder>:/output_folder hbpmip/i2b2-flattening <db_url>
+Run: `docker run --rm -v <input_folder>:/input_folder -v <output_folder>:/output_folder hbpmip/i2b2-flattening <db_url>
 --dataset_prefix <dataset_prefix>
 --output_file <output_file>
---volumes_list <volumes_list>
---scores_list <scores_list>`
+--volumes_list_file <volumes_list_file>
+--scores_list_file <scores_list_file>`
+
+Note that if you do not use custom volumes/scores files, there is no need to mount an input_folder volume.

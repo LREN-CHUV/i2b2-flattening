@@ -129,14 +129,22 @@ def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None, score
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     args_parser = argparse.ArgumentParser()
+    args_parser.add_argument("input_folder")
     args_parser.add_argument("output_folder")
     args_parser.add_argument("i2b2_url")
     args_parser.add_argument("--dataset_prefix")
     args_parser.add_argument("--output_file", default='flattening.csv')
-    args_parser.add_argument("--volumes_list")
-    args_parser.add_argument("--scores_list")
+    args_parser.add_argument("--volumes_list_file")
+    args_parser.add_argument("--scores_list_file")
     args = args_parser.parse_args()
 
+    volumes_path = None
+    scores_path = None
+    if args.volumes_list_file:
+        volumes_path = os.path.join(args.input_folder, args.volumes_list_file)
+    if args.scores_list_file:
+        scores_path = os.path.join(args.input_folder, args.scores_list_file)
     output_path = os.path.join(args.output_folder, args.output_file)
+
     main(args.i2b2_url, output_path,
-         dataset_prefix=args.dataset_prefix, volumes_list_path=args.volumes_list, scores_list_path=args.scores_list)
+         dataset_prefix=args.dataset_prefix, volumes_list_path=volumes_path, scores_list_path=scores_path)

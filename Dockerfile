@@ -8,7 +8,8 @@ COPY requirements.txt /requirements.txt
 
 RUN pip install -r requirements.txt
 
+VOLUME /input_folder
 VOLUME /output_folder
 
 WORKDIR /
-ENTRYPOINT ["python", "/i2b2_flattening/main.py", "/output_folder"]
+ENTRYPOINT ["python", "/i2b2_flattening/main.py", "/input_folder", "/output_folder"]
