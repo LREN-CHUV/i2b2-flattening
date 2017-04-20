@@ -4,13 +4,13 @@ import argparse
 import logging
 import os
 import sys
-from math import fabs
 
 PACKAGE_PARENT = '..'
 SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
 sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 
 from i2b2_flattening import i2b2_connection
+from i2b2_flattening import db_helpers
 from pandas import DataFrame
 
 ######################################################################################################################
@@ -36,92 +36,6 @@ SCORES_TIMEFRAME_YEAR = 2
 ######################################################################################################################
 # FUNCTIONS
 ######################################################################################################################
-
-def get_baseline_visit_with_features(i2b2_conn, subject, mri_test_concept):
-    patient_num = i2b2_conn.db_session.query(i2b2_conn.PatientMapping.patient_num). \
-        filter_by(patient_ide=subject).first()
-    visits = [int(v[0]) for v in
-              i2b2_conn.db_session.query(i2b2_conn.ObservationFact.encounter_num).filter_by(
-                  patient_num=patient_num, concept_cd=mri_test_concept).distinct().all()]
-    visit_bl = None
-    age_bl = None
-    for visit in visits:
-        age = i2b2_conn.db_session.query(i2b2_conn.VisitDimension.patient_age).\
-            filter_by(encounter_num=visit).one_or_none()
-        if not age_bl or age < age_bl:
-            age_bl = age
-            visit_bl = visit
-    return visit_bl
-
-
-def get_sex(i2b2_conn, subject):
-    try:
-        patient_num = i2b2_conn.db_session.query(i2b2_conn.PatientMapping.patient_num).\
-            filter_by(patient_ide=subject).first()
-        return str(i2b2_conn.db_session.query(i2b2_conn.PatientDimension.sex_cd).
-                   filter_by(patient_num=patient_num).one_or_none()[0])
-    except TypeError:
-        return None
-
-
-def get_volume_at_baseline(i2b2_conn, concept_cd, encounter_num):
-    try:
-        return float(i2b2_conn.db_session.query(i2b2_conn.ObservationFact.nval_num).
-                     filter_by(concept_cd=concept_cd, encounter_num=encounter_num).one_or_none()[0])
-    except TypeError:
-        return None
-
-
-def get_age(i2b2_conn, encounter_num):
-    try:
-        return float(i2b2_conn.db_session.query(i2b2_conn.VisitDimension.patient_age).
-                     filter_by(encounter_num=encounter_num).one_or_none()[0])
-    except TypeError:
-        return None
-
-
-def get_diag(i2b2_conn, dataset_prefix, subject, mri_age, time_frame=None):
-    if not mri_age:
-        return None
-    concept_cd = dataset_prefix + DIAG_CD
-    patient_num = int(i2b2_conn.db_session.query(i2b2_conn.PatientMapping.patient_num).
-                      filter_by(patient_ide=subject).first()[0])
-    tuples = i2b2_conn.db_session.query(i2b2_conn.ObservationFact.tval_char, i2b2_conn.ObservationFact.encounter_num).\
-        filter_by(patient_num=patient_num, concept_cd=concept_cd).all()
-    value = None
-    delta = None
-    for t in tuples:
-        encounter_num = int(t[1])
-        age = float(i2b2_conn.db_session.query(i2b2_conn.VisitDimension.patient_age).
-                    filter_by(encounter_num=encounter_num).one_or_none()[0])
-        if age and (not delta or fabs(mri_age - age) < delta):
-            new_delta = fabs(mri_age - age)
-            if new_delta < time_frame / 2:
-                delta = new_delta
-                value = str(t[0])
-    return value
-
-
-def get_score(i2b2_conn, concept_cd, dataset_prefix, subject, mri_age, time_frame):
-    if not mri_age:
-        return None
-
-    patient_num = int(i2b2_conn.db_session.query(i2b2_conn.PatientMapping.patient_num).
-                      filter_by(patient_ide=subject).first()[0])
-    tuples = i2b2_conn.db_session.query(i2b2_conn.ObservationFact.nval_num, i2b2_conn.ObservationFact.encounter_num).\
-        filter_by(patient_num=patient_num, concept_cd=concept_cd).all()
-    value = None
-    delta = None
-    for t in tuples:
-        encounter_num = int(t[1])
-        age = float(i2b2_conn.db_session.query(i2b2_conn.VisitDimension.patient_age).
-                    filter_by(encounter_num=encounter_num).one_or_none()[0])
-        if age and (not delta or fabs(mri_age - age) < delta):
-            new_delta = fabs(mri_age - age)
-            if new_delta < time_frame / 2:
-                delta = new_delta
-                value = float(t[0])
-    return value
 
 
 def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None, scores_list_path=None):
@@ -157,12 +71,7 @@ def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None, score
     concept_dict = dict()
     for vol in volumes_list:
         concept_cd = dataset_prefix + vol.lower().replace(' ', '_') + VOLUMES_POSTFIX
-        try:
-            concept_name = i2b2_conn.db_session.query(i2b2_conn.ConceptDimension.name_char).filter_by(
-                concept_cd=concept_cd).first()[0]
-        except TypeError:
-            logging.warning("Cannot find name_char for %s" % concept_cd)
-            concept_name = concept_cd
+        concept_name = db_helpers.get_concept_name(i2b2_conn, concept_cd)
         headers.append(concept_name)
         concept_dict[concept_name] = concept_cd
     df = DataFrame(columns=headers)
@@ -170,12 +79,7 @@ def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None, score
     logging.info("Generating scores columns (one by score)...")
     for score in scores_list:
         concept_cd = dataset_prefix + score
-        try:
-            concept_name = i2b2_conn.db_session.query(i2b2_conn.ConceptDimension.name_char).filter_by(
-                concept_cd=concept_cd).first()[0]
-        except TypeError:
-            logging.warning("Cannot find name_char for %s" % concept_cd)
-            concept_name = concept_cd
+        concept_name = db_helpers.get_concept_name(i2b2_conn, concept_cd)
         headers.append(concept_name)
         concept_dict[concept_name] = concept_cd
 
@@ -190,22 +94,23 @@ def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None, score
         logging.info("Filling row for %s" % subject)
 
         logging.info("-> extra-vars")
-        encounter_num = get_baseline_visit_with_features(i2b2_conn, subject, mri_test_concept)
-        mri_age = get_age(i2b2_conn, encounter_num)
-        df.loc[index, SEX_COL_NAME] = get_sex(i2b2_conn, subject)
+        encounter_num = db_helpers.get_baseline_visit_with_features(i2b2_conn, subject, mri_test_concept)
+        mri_age = db_helpers.get_age(i2b2_conn, encounter_num)
+        df.loc[index, SEX_COL_NAME] = db_helpers.get_sex(i2b2_conn, subject)
         df.loc[index, AGE_COL_NAME] = mri_age
-        df.loc[index, DIAG_COL_NAME] = get_diag(i2b2_conn, dataset_prefix, subject, mri_age, DIAG_CAT_TIMEFRAME_YEAR)
+        df.loc[index, DIAG_COL_NAME] = db_helpers.get_diag(i2b2_conn, dataset_prefix, subject, mri_age,
+                                                           time_frame=DIAG_CAT_TIMEFRAME_YEAR, diag_cd=DIAG_CD)
 
         logging.info("-> volumes")
         start_column = len(extra_vars)
         end_column = len(extra_vars) + len(volumes_list)
         for h in headers[start_column:end_column]:
-            df.loc[index, h] = get_volume_at_baseline(i2b2_conn, concept_dict[h], encounter_num)
+            df.loc[index, h] = db_helpers.get_volume_at_baseline(i2b2_conn, concept_dict[h], encounter_num)
 
         logging.info("-> scores")
         start_column = end_column
         for h in headers[start_column:]:
-            df.loc[index, h] = get_score(
+            df.loc[index, h] = db_helpers.get_score(
                 i2b2_conn, concept_dict[h], dataset_prefix, subject, mri_age, SCORES_TIMEFRAME_YEAR)
 
     i2b2_conn.close()
