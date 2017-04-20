@@ -19,7 +19,8 @@ from pandas import DataFrame
 ######################################################################################################################
 
 SUBJECT_COL_NAME = 'Subject Code'
-AGE_COL_NAME = "age"
+AGE_YEARS_COL_NAME = "Subject Age Years"
+AGE_MONTHS_COL_NAME = "Subject Age Months"
 SEX_COL_NAME = "Gender"
 DIAG_COL_NAME = "Diagnosis Categories"
 
@@ -36,7 +37,6 @@ PROTOCOL_CONCEPT_CD = "protocol_name"
 ######################################################################################################################
 # FUNCTIONS
 ######################################################################################################################
-
 
 def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None, scores_list_path=None):
 
@@ -62,7 +62,8 @@ def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None, score
     logging.info("Generating extra_vars columns (demographics, diag, etc)...")
     extra_vars = list()
     extra_vars.append(SUBJECT_COL_NAME)
-    extra_vars.append(AGE_COL_NAME)
+    extra_vars.append(AGE_YEARS_COL_NAME)
+    extra_vars.append(AGE_MONTHS_COL_NAME)
     extra_vars.append(SEX_COL_NAME)
     extra_vars.append(DIAG_COL_NAME)
     headers.extend(extra_vars)
@@ -96,8 +97,11 @@ def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None, score
         logging.info("-> extra-vars")
         encounter_num = db_helpers.get_baseline_visit_with_features(i2b2_conn, subject, mri_test_concept)
         mri_age = db_helpers.get_age(i2b2_conn, encounter_num)
+        age_years = int(mri_age)
+        age_months = int(12 * (mri_age - age_years))
         df.loc[index, SEX_COL_NAME] = db_helpers.get_sex(i2b2_conn, subject)
-        df.loc[index, AGE_COL_NAME] = mri_age
+        df.loc[index, AGE_YEARS_COL_NAME] = int(mri_age)
+        df.loc[index, AGE_MONTHS_COL_NAME] = age_months
         df.loc[index, DIAG_COL_NAME] = db_helpers.get_diag(i2b2_conn, dataset_prefix, subject, mri_age,
                                                            time_frame=DIAGNOSIS_TIMEFRAME_YEAR,
                                                            diag_cd=DIAGNOSIS_CONCEPT_CD)
