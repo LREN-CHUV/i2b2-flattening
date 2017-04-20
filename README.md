@@ -1,3 +1,4 @@
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/fb780f78362846d4873f44e98ca71095)](https://www.codacy.com/app/mirco-nasuti/i2b2-flattening?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=LREN-CHUV/i2b2-flattening&amp;utm_campaign=Badge_Grade)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/LREN-CHUV/i2b2-flattening/blob/master/LICENSE)
 [![CHUV](https://img.shields.io/badge/CHUV-LREN-AF4C64.svg)](https://www.unil.ch/lren/en/home.html)
 
