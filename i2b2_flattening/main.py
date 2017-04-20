@@ -33,6 +33,8 @@ DEFAULT_SCORES_LIST = './data/default_scores_list'
 DIAGNOSIS_CONCEPT_CD = "diag_category"
 PROTOCOL_CONCEPT_CD = "protocol_name"
 
+VOLUMES_CONCEPT_POSTFIX = "_volume(cm3)"
+
 
 ######################################################################################################################
 # FUNCTIONS
@@ -71,7 +73,7 @@ def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None, score
     logging.info("Generating volumes columns (one by brain region)...")
     concept_dict = dict()
     for vol in volumes_list:
-        concept_cd = dataset_prefix + vol.lower().replace(' ', '_')
+        concept_cd = dataset_prefix + vol.lower().replace(' ', '_') + VOLUMES_CONCEPT_POSTFIX
         concept_name = db_helpers.get_concept_name(i2b2_conn, concept_cd)
         headers.append(concept_name)
         concept_dict[concept_name] = concept_cd
@@ -97,10 +99,16 @@ def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None, score
         logging.info("-> extra-vars")
         encounter_num = db_helpers.get_baseline_visit_with_features(i2b2_conn, subject, mri_test_concept)
         mri_age = db_helpers.get_age(i2b2_conn, encounter_num)
-        age_years = int(mri_age)
-        age_months = int(12 * (mri_age - age_years))
+        try:
+            age_years = int(mri_age)
+        except TypeError:
+            age_years = None
+        try:
+            age_months = int(12 * (mri_age - age_years))
+        except TypeError:
+            age_months = None
         df.loc[index, SEX_COL_NAME] = db_helpers.get_sex(i2b2_conn, subject)
-        df.loc[index, AGE_YEARS_COL_NAME] = int(mri_age)
+        df.loc[index, AGE_YEARS_COL_NAME] = age_years
         df.loc[index, AGE_MONTHS_COL_NAME] = age_months
         df.loc[index, DIAG_COL_NAME] = db_helpers.get_diag(i2b2_conn, dataset_prefix, subject, mri_age,
                                                            time_frame=DIAGNOSIS_TIMEFRAME_YEAR,
@@ -143,12 +151,14 @@ if __name__ == '__main__':
     args_parser.add_argument("--scores_list_file")
     args = args_parser.parse_args()
 
-    volumes_path = None
-    scores_path = None
     if args.volumes_list_file:
         volumes_path = os.path.join(args.input_folder, args.volumes_list_file)
+    else:
+        volumes_path = DEFAULT_VOLUMES_LIST
     if args.scores_list_file:
         scores_path = os.path.join(args.input_folder, args.scores_list_file)
+    else:
+        scores_path = DEFAULT_SCORES_LIST
     output_path = os.path.join(args.output_folder, args.output_file)
 
     main(args.i2b2_url, output_path,
