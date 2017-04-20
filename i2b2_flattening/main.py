@@ -13,24 +13,24 @@ from i2b2_flattening import i2b2_connection
 from i2b2_flattening import db_helpers
 from pandas import DataFrame
 
+
 ######################################################################################################################
 # CONSTANTS
 ######################################################################################################################
 
-SUBJECT_CODE_COLUMN = 'subject_code'
+SUBJECT_COL_NAME = 'Subject Code'
+AGE_COL_NAME = "age"
+SEX_COL_NAME = "Gender"
+DIAG_COL_NAME = "Diagnosis Categories"
+
+DIAGNOSIS_TIMEFRAME_YEAR = 10
+SCORES_TIMEFRAME_YEAR = 10
+
 DEFAULT_VOLUMES_LIST = './data/default_volumes_list'
 DEFAULT_SCORES_LIST = './data/default_scores_list'
-VOLUMES_POSTFIX = "_volume(cm3)"
 
-AGE_COL_NAME = "age"
-SEX_COL_NAME = "sex"
-DIAG_COL_NAME = "diag_category"
-
-DIAG_CD = "diag_category"
-MRI_TEST_CONCEPT = "protocol_name"
-
-DIAG_CAT_TIMEFRAME_YEAR = 10
-SCORES_TIMEFRAME_YEAR = 2
+DIAGNOSIS_CONCEPT_CD = "diag_category"
+PROTOCOL_CONCEPT_CD = "protocol_name"
 
 
 ######################################################################################################################
@@ -61,7 +61,7 @@ def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None, score
 
     logging.info("Generating extra_vars columns (demographics, diag, etc)...")
     extra_vars = list()
-    extra_vars.append(SUBJECT_CODE_COLUMN)
+    extra_vars.append(SUBJECT_COL_NAME)
     extra_vars.append(AGE_COL_NAME)
     extra_vars.append(SEX_COL_NAME)
     extra_vars.append(DIAG_COL_NAME)
@@ -70,7 +70,7 @@ def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None, score
     logging.info("Generating volumes columns (one by brain region)...")
     concept_dict = dict()
     for vol in volumes_list:
-        concept_cd = dataset_prefix + vol.lower().replace(' ', '_') + VOLUMES_POSTFIX
+        concept_cd = dataset_prefix + vol.lower().replace(' ', '_')
         concept_name = db_helpers.get_concept_name(i2b2_conn, concept_cd)
         headers.append(concept_name)
         concept_dict[concept_name] = concept_cd
@@ -85,12 +85,12 @@ def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None, score
 
     logging.info("Generating rows (one by subject)...")
     subjects = [subj[0] for subj in i2b2_conn.db_session.query(i2b2_conn.PatientMapping.patient_ide)]
-    df[SUBJECT_CODE_COLUMN] = subjects
+    df[SUBJECT_COL_NAME] = subjects
 
     logging.info("Filling table with data...")
-    mri_test_concept = dataset_prefix + MRI_TEST_CONCEPT
+    mri_test_concept = dataset_prefix + PROTOCOL_CONCEPT_CD
     for index, row in df.iterrows():
-        subject = row[SUBJECT_CODE_COLUMN]
+        subject = row[SUBJECT_COL_NAME]
         logging.info("Filling row for %s" % subject)
 
         logging.info("-> extra-vars")
@@ -99,7 +99,8 @@ def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None, score
         df.loc[index, SEX_COL_NAME] = db_helpers.get_sex(i2b2_conn, subject)
         df.loc[index, AGE_COL_NAME] = mri_age
         df.loc[index, DIAG_COL_NAME] = db_helpers.get_diag(i2b2_conn, dataset_prefix, subject, mri_age,
-                                                           time_frame=DIAG_CAT_TIMEFRAME_YEAR, diag_cd=DIAG_CD)
+                                                           time_frame=DIAGNOSIS_TIMEFRAME_YEAR,
+                                                           diag_cd=DIAGNOSIS_CONCEPT_CD)
 
         logging.info("-> volumes")
         start_column = len(extra_vars)
