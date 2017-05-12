@@ -11,14 +11,11 @@ def get_baseline_visit_with_features(i2b2_conn, subject, mri_test_concept):
     visit_bl = None
     age_bl = None
     for visit in visits:
-        try:
-            age = float(i2b2_conn.db_session.query(i2b2_conn.VisitDimension.patient_age).
-                        filter_by(encounter_num=visit).one_or_none())
-            if not age_bl or age < age_bl:
-                age_bl = age
-                visit_bl = visit
-        except TypeError:
-            logging.warning("Found visit with no age !")
+        age = i2b2_conn.db_session.query(i2b2_conn.VisitDimension.patient_age).\
+            filter_by(encounter_num=visit).one_or_none()[0]
+        if not age_bl or age < age_bl:
+            age_bl = age
+            visit_bl = visit
     return visit_bl
 
 
