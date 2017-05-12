@@ -88,7 +88,8 @@ def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None, score
         concept_dict[concept_name] = concept_cd
 
     logging.info("Generating rows (one by subject)...")
-    subjects = [subj[0] for subj in i2b2_conn.db_session.query(i2b2_conn.PatientMapping.patient_ide)]
+    subjects = [subj[0] for subj in i2b2_conn.db_session.query(i2b2_conn.PatientMapping.patient_ide).filter_by(
+        patient_ide_source=dataset_prefix[:-1])]
     df[SUBJECT_COL_NAME] = subjects
 
     logging.info("Filling table with data...")
