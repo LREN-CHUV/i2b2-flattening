@@ -44,7 +44,8 @@ def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None, score
 
     logging.info("START")
 
-    dataset_prefix = dataset_prefix + ":" if dataset_prefix[-1] != ":" else dataset_prefix
+    dataset_prefix = dataset_prefix + ":" \
+        if (len(dataset_prefix) > 0 and dataset_prefix[-1]) != ":" else dataset_prefix
     volumes_list_path = volumes_list_path if volumes_list_path else DEFAULT_VOLUMES_LIST
     scores_list_path = scores_list_path if scores_list_path else DEFAULT_SCORES_LIST
 
