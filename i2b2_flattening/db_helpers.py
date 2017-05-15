@@ -13,7 +13,7 @@ def get_baseline_visit_with_features(i2b2_conn, subject, mri_test_concept):
     for visit in visits:
         age = i2b2_conn.db_session.query(i2b2_conn.VisitDimension.patient_age).\
             filter_by(encounter_num=visit).one_or_none()[0]
-        if not age_bl or age < age_bl:
+        if not age_bl or (age and (age < age_bl)):
             age_bl = age
             visit_bl = visit
     return visit_bl
@@ -67,7 +67,7 @@ def get_diag(i2b2_conn, dataset_prefix, subject, mri_age, time_frame=None, diag_
     return value
 
 
-def get_score(i2b2_conn, concept_cd, dataset_prefix, subject, mri_age, time_frame):
+def get_score(i2b2_conn, concept_cd, subject, mri_age, time_frame):
     if not mri_age:
         return None
 
@@ -83,9 +83,13 @@ def get_score(i2b2_conn, concept_cd, dataset_prefix, subject, mri_age, time_fram
                     filter_by(encounter_num=encounter_num).one_or_none()[0])
         if age and (not delta or fabs(mri_age - age) < delta):
             new_delta = fabs(mri_age - age)
-            if new_delta < time_frame / 2:
-                delta = new_delta
-                value = float(t[0])
+            try:
+                new_value = float(t[0])
+                if new_delta < time_frame / 2:
+                    delta = new_delta
+                    value = new_value
+            except TypeError:
+                pass
     return value
 
 
