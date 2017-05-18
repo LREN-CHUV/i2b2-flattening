@@ -31,7 +31,7 @@ DEFAULT_VOLUMES_LIST = './data/default_volumes_list'
 DEFAULT_SCORES_LIST = './data/default_scores_list'
 
 DIAGNOSIS_CONCEPT_CD = "diag_category"
-MAGNETIC_FIELD_STRENGTH_CONCEPT_CD = "MagneticFieldStrength"
+MRI_TEST_CONCEPT_CD = "3rd_ventricle_volume(cm3)"
 
 VOLUMES_CONCEPT_POSTFIX = "_volume(cm3)"
 
@@ -93,7 +93,7 @@ def main(i2b2_url, output_file, dataset_prefix='', volumes_list_path=None, score
     df[SUBJECT_COL_NAME] = subjects
 
     logging.info("Filling table with data...")
-    mri_test_concept = dataset_prefix + MAGNETIC_FIELD_STRENGTH_CONCEPT_CD
+    mri_test_concept = dataset_prefix + MRI_TEST_CONCEPT_CD
     for index, row in df.iterrows():
         subject = row[SUBJECT_COL_NAME]
         logging.info("Filling row for %s" % subject)
